@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Running Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ══ AUTH SCREEN ══ -->
+  <div id="auth-screen" class="auth-wrap">
+    <div class="auth-card">
+
+      <!-- Header nero con logo e tab switcher -->
+      <div class="auth-header">
+        <div class="auth-logo">
+          <div class="logo-dot"></div>
+          <span>Running Planner</span>
+        </div>
+        <div class="auth-tagline">Il tuo piano di corsa personale</div>
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Accedi</button>
+          <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrati</button>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="auth-body">
+        <div class="auth-error hidden" id="auth-error"></div>
+        <div id="register-extra" style="display:none">
+          <div class="fg" style="margin-bottom:10px"><label>Nome</label><input type="text" id="a-nome" placeholder="es. Marco"></div>
+          <div class="fg" style="margin-bottom:10px"><label>Cognome</label><input type="text" id="a-cognome" placeholder="es. Rossi"></div>
+          <div class="fg" style="margin-bottom:10px"><label>Nickname</label><input type="text" id="a-nick" placeholder="es. MarcoRuns"></div>
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label>Email</label>
+          <input type="email" id="a-email" placeholder="es. marco@email.com" onkeydown="if(event.key==='Enter')doAuth()">
+        </div>
+        <div class="fg" style="margin-bottom:20px">
+          <label>Password</label>
+          <input type="password" id="a-pass" placeholder="min. 6 caratteri" onkeydown="if(event.key==='Enter')doAuth()">
+        </div>
+        <button class="auth-submit" id="auth-submit" onclick="doAuth()">
+          <span id="auth-icon">→</span> <span id="auth-label">Accedi</span>
+        </button>
+        <div class="auth-forgot" id="forgot-wrap">
+          <button onclick="resetPassword()">Password dimenticata?</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ APP (nascosta fino al login) ══ -->
+  <div id="app-screen" style="display:none">
+
+    <!-- EDIT SESSION MODAL -->
+    <div class="modal-overlay hidden" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title" id="modal-title">Sessione</div>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="fg form-full"><label>Titolo sessione</label><input type="text" id="m-title" placeholder="es. Interval training"></div>
+          <div class="fg"><label>Tipo</label>
+            <select id="m-type">
+              <option value="easy">Facile</option><option value="tempo">Tempo run</option>
+              <option value="interval">Interval</option><option value="long">Lungo</option><option value="rest">Riposo</option>
+            </select>
+          </div>
+          <div class="fg"><label>Distanza totale</label><input type="text" id="m-dist" placeholder="es. 14 km"></div>
+          <div class="fg"><label>Dislivello (m)</label><input type="number" id="m-elev" placeholder="es. 120" min="0"></div>
+        </div>
+        <div class="fg" style="margin-bottom:10px"><label>Step della sessione</label></div>
+        <div class="steps-editor" id="steps-editor"></div>
+        <button class="btn btn-outline btn-sm" onclick="addStep()" style="margin-bottom:12px">+ Aggiungi step</button>
+        <div class="fg"><label>Note aggiuntive</label><textarea id="m-notes" placeholder="Es. portare gel, attenzione alla salita km 8…"></textarea></div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal()">Annulla</button>
+          <button class="btn btn-dark" onclick="saveSession()">Salva sessione</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="logo"><div class="logo-dot"></div>Running Planner</div>
+      <nav class="nav">
+        <button class="nav-btn active" onclick="showScreen('training',this)">Allenamenti</button>
+        <button class="nav-btn" onclick="showScreen('races',this)">Gare</button>
+        <button class="nav-btn" onclick="showScreen('progress',this)">Progressi</button>
+      </nav>
+      <button class="avatar-btn" id="avatar-btn" onclick="showScreen('profile',null)">?</button>
+    </div>
+
+    <div class="container">
+
+      <!-- ══ ALLENAMENTI ══ -->
+      <div id="screen-training" class="screen active">
+        <div class="week-header">
+          <div>
+            <div class="plan-name" id="plan-name">Il mio piano</div>
+            <div class="plan-sub" id="plan-sub">Clicca un giorno per vedere o modificare la sessione</div>
+          </div>
+          <div class="week-nav">
+            <button onclick="changeWeek(-1)">&#8249;</button>
+            <span id="week-label">—</span>
+            <button onclick="changeWeek(1)">&#8250;</button>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="mlabel">Volume sett.</div><div class="mval" id="m-vol">—<span class="munit">km</span></div></div>
+          <div class="metric"><div class="mlabel">Dislivello</div><div class="mval" id="m-elev-week">—<span class="munit">m</span></div></div>
+          <div class="metric"><div class="mlabel">Sessioni</div><div class="mval" id="m-sess">—</div></div>
+          <div class="metric"><div class="mlabel">Riposi</div><div class="mval" id="m-rest">—</div></div>
+        </div>
+        <div class="completion-bar-wrap">
+          <div class="completion-label">Completamento settimana</div>
+          <div class="completion-bar-bg"><div class="completion-bar-fill" id="completion-fill" style="width:0%"></div></div>
+          <div class="completion-pct" id="completion-pct">0%</div>
+        </div>
+        <div class="week-grid" id="week-grid"></div>
+        <div class="week-list" id="week-list"></div>
+        <div id="detail-area"></div>
+      </div>
+
+      <!-- ══ GARE ══ -->
+      <div id="screen-races" class="screen">
+        <div id="race-list"></div>
+        <button class="fab" onclick="toggleRaceDrawer()" id="fab-btn" title="Aggiungi gara">+</button>
+        <div class="race-drawer" id="race-drawer">
+          <div class="race-drawer-inner">
+            <div class="drawer-header">
+              <div style="font-size:15px;font-weight:600">Nuova gara</div>
+              <button class="modal-close" onclick="toggleRaceDrawer()">×</button>
+            </div>
+            <div class="form-grid">
+              <div class="fg form-full"><label>Nome gara</label><input type="text" id="r-name" placeholder="es. Verona Marathon 2025"></div>
+              <div class="fg"><label>Data</label><input type="date" id="r-date"></div>
+              <div class="fg"><label>Distanza</label>
+                <select id="r-dist" onchange="toggleCustomDist(this.value)">
+                  <option value="5K">5K</option><option value="10K">10K</option>
+                  <option value="HM">Mezza maratona</option><option value="M" selected>Maratona</option>
+                  <option value="UM">Ultramaratona</option><option value="custom">Personalizzata</option>
+                </select>
+              </div>
+              <div class="fg" id="custom-dist-group" style="display:none"><label id="custom-dist-label">Km</label><input type="number" id="r-custom-km" placeholder="es. 50" step="1" min="1"></div>
+              <div class="fg"><label>Dislivello (m)</label><input type="number" id="r-elev" placeholder="es. 320" min="0"></div>
+              <div class="fg"><label>Obiettivo (tempo)</label><input type="text" id="r-goal" placeholder="es. 3:15:00"></div>
+              <div class="fg form-full"><label>Città / luogo</label><input type="text" id="r-loc" placeholder="es. Verona, VR"></div>
+            </div>
+            <button class="btn btn-dark" onclick="addRace()" style="margin-top:12px;width:100%;justify-content:center">Aggiungi gara</button>
+          </div>
+        </div>
+        <div class="drawer-backdrop hidden" id="drawer-backdrop" onclick="toggleRaceDrawer()"></div>
+      </div>
+
+      <!-- ══ PROGRESSI ══ -->
+      <div id="screen-progress" class="screen">
+        <div class="prog-grid">
+          <div class="prog-card"><div class="plabel">Km totali anno</div><div class="pval" id="p-km">—</div></div>
+          <div class="prog-card"><div class="plabel">Dislivello totale</div><div class="pval" id="p-elev">—<span style="font-size:14px;font-weight:400;color:#888"> m</span></div></div>
+          <div class="prog-card"><div class="plabel">Gare completate</div><div class="pval" id="p-races">—</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Volume mensile (km)</div>
+          <div style="position:relative;width:100%;height:180px"><canvas id="chart-km"></canvas></div>
+          <div class="bar-lbs" id="bar-labels-km"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Dislivello mensile (m)</div>
+          <div style="position:relative;width:100%;height:180px"><canvas id="chart-elev"></canvas></div>
+          <div class="bar-lbs" id="bar-labels-elev"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Sessioni per tipo</div>
+          <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+            <div style="position:relative;width:160px;height:160px;flex-shrink:0"><canvas id="chart-types"></canvas></div>
+            <div id="chart-types-legend" style="font-size:13px;display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
+        <div class="section-title">Personal Best</div>
+        <div id="pb-list-progress"></div>
+      </div>
+
+      <!-- ══ PROFILO ══ -->
+      <div id="screen-profile" class="screen">
+        <div class="profile-hero">
+          <div class="profile-avatar-big" id="prof-avatar">?</div>
+          <div style="flex:1">
+            <div class="profile-name-big" id="prof-name-big">Il mio profilo</div>
+            <div class="profile-nick-big" id="prof-nick-big"></div>
+            <div id="prof-email-disp" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px"></div>
+          </div>
+          <button class="btn btn-sm" onclick="doLogout()" style="background:rgba(255,255,255,0.1);color:#fff;border:0.5px solid rgba(255,255,255,0.25);font-size:12px">Esci</button>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Dati personali
+            <button class="btn btn-outline btn-sm" id="edit-profile-btn" onclick="toggleEditProfile()">Modifica</button>
+          </div>
+          <div id="profile-view">
+            <div class="data-grid">
+              <div class="data-item"><div class="di-label">Nome</div><div class="di-val" id="pv-nome">—</div></div>
+              <div class="data-item"><div class="di-label">Cognome</div><div class="di-val" id="pv-cognome">—</div></div>
+              <div class="data-item"><div class="di-label">Nickname</div><div class="di-val" id="pv-nick">—</div></div>
+              <div class="data-item"><div class="di-label">Città</div><div class="di-val" id="pv-city">—</div></div>
+              <div class="data-item"><div class="di-label">Anno di nascita</div><div class="di-val" id="pv-year">—</div></div>
+              <div class="data-item"><div class="di-label">Club / società</div><div class="di-val" id="pv-club">—</div></div>
+            </div>
+          </div>
+          <div id="profile-edit" style="display:none;margin-top:12px">
+            <div class="form-grid">
+              <div class="fg"><label>Nome</label><input type="text" id="pe-nome" placeholder="Marco"></div>
+              <div class="fg"><label>Cognome</label><input type="text" id="pe-cognome" placeholder="Rossi"></div>
+              <div class="fg"><label>Nickname</label><input type="text" id="pe-nick" placeholder="MarcoRuns"></div>
+              <div class="fg"><label>Città</label><input type="text" id="pe-city" placeholder="Verona"></div>
+              <div class="fg"><label>Anno di nascita</label><input type="number" id="pe-year" placeholder="1990" min="1940" max="2010"></div>
+              <div class="fg"><label>Club / società</label><input type="text" id="pe-club" placeholder="ASD Running Team"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn-dark btn-sm" onclick="saveProfile()">Salva</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleEditProfile()">Annulla</button>
+            </div>
+          </div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Personal Best
+            <button class="btn btn-outline btn-sm" onclick="togglePbForm()">+ Aggiungi</button>
+          </div>
+          <div class="pb-add-form" id="pb-add-form">
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Distanza</div>
+            <div class="pb-dist-pills">
+              <div class="pb-pill on" data-dist="5K" onclick="selectPbDist(this)">5K</div>
+              <div class="pb-pill" data-dist="10K" onclick="selectPbDist(this)">10K</div>
+              <div class="pb-pill" data-dist="HM" onclick="selectPbDist(this)">Mezza</div>
+              <div class="pb-pill" data-dist="M" onclick="selectPbDist(this)">Maratona</div>
+              <div class="pb-pill" data-dist="UM" onclick="selectPbDist(this)">Ultra</div>
+              <div class="pb-pill" data-dist="custom" onclick="selectPbDist(this)">Personalizzata</div>
+            </div>
+            <div id="pb-custom-wrap" style="display:none;margin-bottom:10px">
+              <div class="fg"><label>Distanza personalizzata (km)</label><input type="number" id="pb-custom-km" placeholder="es. 50" step="1" min="1"></div>
+            </div>
+            <div class="form-grid">
+              <div class="fg"><label>Tempo (hh:mm:ss)</label><input type="text" id="pb-time" placeholder="es. 3:14:22"></div>
+              <div class="fg"><label>Data</label><input type="date" id="pb-date"></div>
+              <div class="fg form-full"><label>Gara / evento</label><input type="text" id="pb-race-name" placeholder="es. Verona Marathon 2024"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-dark btn-sm" onclick="savePb()">Salva PB</button>
+              <button class="btn btn-outline btn-sm" onclick="togglePbForm()">Annulla</button>
+            </div>
+          </div>
+          <div id="pb-list-profile" style="margin-top:12px"></div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Storico gare completate
+            <button class="btn btn-outline btn-sm" onclick="toggleAddHistory()">+ Aggiungi manuale</button>
+          </div>
+          <div class="add-history-form" id="add-history-form">
+            <div class="form-grid">
+              <div class="fg form-full"><label>Nome gara</label><input type="text" id="h-name" placeholder="es. Verona Marathon 2024"></div>
+              <div class="fg"><label>Data</label><input type="date" id="h-date"></div>
+              <div class="fg"><label>Distanza</label>
+                <select id="h-dist" onchange="toggleHCustomDist(this.value)">
+                  <option value="5K">5K</option><option value="10K">10K</option>
+                  <option value="HM">Mezza maratona</option><option value="M" selected>Maratona</option>
+                  <option value="UM">Ultramaratona</option><option value="custom">Personalizzata</option>
+                </select>
+              </div>
+              <div class="fg" id="h-custom-dist-group" style="display:none"><label>Km</label><input type="number" id="h-custom-km" placeholder="es. 50" step="1" min="1"></div>
+              <div class="fg"><label>Tempo finale</label><input type="text" id="h-time" placeholder="es. 3:45:22"></div>
+              <div class="fg"><label>Obiettivo (tempo)</label><input type="text" id="h-goal" placeholder="es. 3:30:00"></div>
+              <div class="fg"><label>Posizione assoluta</label><input type="number" id="h-pos" placeholder="es. 145" min="1"></div>
+              <div class="fg"><label>Posizione categoria</label><input type="number" id="h-pos-cat" placeholder="es. 12" min="1"></div>
+              <div class="fg"><label>Dislivello (m)</label><input type="number" id="h-elev" placeholder="es. 320" min="0"></div>
+              <div class="fg"><label>Meteo</label><input type="text" id="h-meteo" placeholder="es. Soleggiato, 18°C"></div>
+              <div class="fg form-full"><label>Città / luogo</label><input type="text" id="h-loc" placeholder="es. Verona, VR"></div>
+              <div class="fg form-full"><label>Note / commento</label><textarea id="h-notes" placeholder="Come è andata?…"></textarea></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn-dark btn-sm" onclick="saveHistoryRace()">Salva gara</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleAddHistory()">Annulla</button>
+            </div>
+          </div>
+          <div id="history-list" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script type="module" src="firebase.js"></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
